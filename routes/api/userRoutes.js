@@ -4,7 +4,6 @@ const {
 	getAllUsers,
 	getSingleUser,
 	postNewUser,
-	// updateUser,
 	deleteUser,
 	addFriend,
 	deleteFriend,
@@ -13,7 +12,6 @@ const {
 router.route('/').get(getAllUsers).post(postNewUser);
 
 router.route('/:userId').get(getSingleUser).delete(deleteUser);
-// .put(updateUser)
 
 router.route('/:userId/friends/:friendId').post(addFriend).delete(deleteFriend);
 

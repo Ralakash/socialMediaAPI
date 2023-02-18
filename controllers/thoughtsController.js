@@ -1,5 +1,5 @@
 const { ObjectId } = require('mongoose').Types;
-const { User, Thoughts } = require('../models');
+const { User, Thoughts, Reactions } = require('../models');
 
 module.exports = {
 	// Get all thoughts
@@ -15,7 +15,7 @@ module.exports = {
 	},
 	// Get a single thought
 	getSingleThought(req, res) {
-		Thought.findOne({ _id: req.params.thoughtId })
+		Thoughts.findOne({ _id: req.params.thoughtId })
 			.select('-__v')
 			.then((thought) =>
 				!thought ? res.status(404).json({ message: 'No thought with that ID' }) : res.json(thought)
@@ -27,18 +27,46 @@ module.exports = {
 	},
 	// create a new thought
 	postNewThought(req, res) {
-		Thought.create(req.body)
-			.then((thought) => res.json(thought))
-			.catch((err) => res.status(500).json(err));
+		let thoughtobj = { ...req.body, userId: req.params.userId };
+		Thoughts.create(thoughtobj)
+			.then((thought) => {
+				return User.findOneAndUpdate(
+					{ _id: req.params.userId },
+					{ $push: { thoughts: thought._id } },
+					{ new: true }
+				);
+			})
+			.then((user) => {
+				if (!user) {
+					return res.status(404).json({ message: 'Thought created but no user with this id!' });
+				}
+
+				res.json({ message: 'Thought successfully created!' });
+			})
+			.catch((err) => {
+				console.log(err);
+				res.status(500).json(err);
+			});
 	},
 	// Delete a thought and remove them from the course
 	deleteThought(req, res) {
-		Thought.findOneAndRemove({ _id: req.params.thoughtId })
+		Thoughts.findOneAndRemove({ _id: req.params.thoughtId })
 			.then((thought) => {
 				if (!thought) {
 					return res.status(404).json({ message: 'No such thought exists' });
 				}
-				res.json({ message: 'Thought successfully deleted' });
+				return User.findOneAndUpdate(
+					{ thoughts: req.params.thoughtId },
+					{ $pull: { thoughts: thought._id } },
+					{ new: true }
+				);
+			})
+			.then((user) => {
+				if (!user) {
+					return res.status(404).json({ message: 'Thought deleted but no user with this id!' });
+				}
+
+				res.json({ message: 'Thought successfully deleted!' });
 			})
 			.catch((err) => {
 				console.log(err);
@@ -50,30 +78,44 @@ module.exports = {
 	postNewReaction(req, res) {
 		console.log('You are adding an reaction');
 		console.log(req.body);
-		Thoughts.findOneAndUpdate(
-			{ _id: req.params.thoughtId },
-			{ $addToSet: { reactions: req.params.reactionId } },
-			{ runValidators: true, new: true }
-		)
-			.then((thought) =>
-				!thought
-					? res.status(404).json({ message: 'No thought found with that ID :(' })
-					: res.json(thought)
-			)
+		let reactionobj = { ...req.body, userId: req.params.userId };
+		Reactions.create(reactionobj)
+			.then((reaction) => {
+				Thoughts.findOneAndUpdate(
+					{ _id: req.params.thoughtId },
+					{ $addToSet: { reactions: reaction._id } },
+					{ runValidators: true, new: true }
+				).then((thought) =>
+					!thought
+						? res.status(404).json({ message: 'No thought found with that ID :(' })
+						: res.json(thought)
+				);
+			})
 			.catch((err) => res.status(500).json(err));
 	},
 	// Remove reaction from a thought
 	deleteReaction(req, res) {
-		Thought.findOneAndUpdate(
-			{ _id: req.params.thoughtId },
-			{ $pull: { reactions: req.params.reactionId } },
-			{ runValidators: true, new: true }
-		)
-			.then((thought) =>
-				!thought
-					? res.status(404).json({ message: 'No thought found with that ID :(' })
-					: res.json(thought)
-			)
-			.catch((err) => res.status(500).json(err));
+		Reactions.findOneAndRemove({ _id: req.params.reactionId })
+			.then((reaction) => {
+				if (!reaction) {
+					return res.status(404).json({ message: 'No such reaction exists' });
+				}
+				return Thoughts.findOneAndUpdate(
+					{ reactions: req.params.reactionId },
+					{ $pull: { reactions: reaction._id } },
+					{ new: true }
+				);
+			})
+			.then((user) => {
+				if (!user) {
+					return res.status(404).json({ message: 'Thought deleted but no user with this id!' });
+				}
+
+				res.json({ message: 'Thought successfully deleted!' });
+			})
+			.catch((err) => {
+				console.log(err);
+				res.status(500).json(err);
+			});
 	},
 };

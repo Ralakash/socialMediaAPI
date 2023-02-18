@@ -12,7 +12,7 @@ const thoughtsSchema = new Schema(
 			type: Date,
 			default: Date.now,
 		},
-		username: {
+		userId: {
 			type: String,
 			required: true,
 		},
@@ -33,16 +33,12 @@ const thoughtsSchema = new Schema(
 
 const reactionSchema = new Schema(
 	{
-		reactionID: {
-			type: Schema.Types.ObjectID,
-			default: () => new Types.ObjectId(),
-		},
 		reactionBody: {
 			type: String,
 			required: true,
 			max: 280,
 		},
-		username: {
+		userId: {
 			type: String,
 			required: true,
 		},
@@ -64,4 +60,5 @@ thoughtsSchema.virtual('reactionCount').get(function () {
 });
 
 const Thoughts = model('thoughts', thoughtsSchema);
-module.exports = Thoughts;
+const Reactions = model('reactions', reactionSchema);
+module.exports = { Thoughts, Reactions };
